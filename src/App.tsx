@@ -638,6 +638,17 @@ export default function App() {
     await supabase.from("sessions").delete().eq("id", id);
     setSessions((prev) => prev.filter((r) => r.id !== id));
   }
+<>
+  <div className="card center">
+    <ProgressRing value={totalMin} goal={goal} />
+  </div>
+
+  {/* Test banner for auto-deploy */}
+  <div className="card" style={{ marginTop: 8 }}>
+    <strong>Hello World</strong>
+  </div>
+
+  {CATS.map(c=>{
 
   if (!userId) return <AuthGate onReady={setUserId} />;
 
