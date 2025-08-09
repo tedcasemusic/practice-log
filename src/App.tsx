@@ -246,7 +246,7 @@ function Today({
           marginBottom: "0.5em",
         }}
       >
-        ✅
+        ✅ lolol
       </div>
 
       <div className="card center">
