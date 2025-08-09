@@ -238,17 +238,6 @@ function Today({
 
   return (
     <>
-      <div
-        style={{
-          textAlign: "center",
-          fontSize: "4rem",
-          color: "green",
-          marginBottom: "0.5em",
-        }}
-      >
-        ✅ lolol
-      </div>
-
       <div className="card center">
         <ProgressRing value={totalMin} goal={goal} />
       </div>
