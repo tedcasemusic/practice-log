@@ -10,8 +10,15 @@ const CATS: { key: CategoryKey; label: string }[] = [
   { key: "technique", label: "Technique" },
 ];
 
-type PlanState = { items: Record<CategoryKey, { minutes: number; note: string }> };
-type SessionRow = { id?: number; date: string; category: CategoryKey; minutes: number };
+type PlanState = {
+  items: Record<CategoryKey, { minutes: number; note: string }>;
+};
+type SessionRow = {
+  id?: number;
+  date: string;
+  category: CategoryKey;
+  minutes: number;
+};
 
 /* ---------- utils ---------- */
 // Formats a Date to YYYY-MM-DD in *local* time
@@ -80,8 +87,14 @@ function AuthGate({ onReady }: { onReady: (userId: string) => void }) {
     <div className="app">
       <div className="card" style={{ maxWidth: 520, margin: "80px auto" }}>
         <h1>Practice Log</h1>
-        <p className="note">Sign in with a magic link to load and save your data.</p>
-        <form onSubmit={sendLink} className="row" style={{ alignItems: "stretch" }}>
+        <p className="note">
+          Sign in with a magic link to load and save your data.
+        </p>
+        <form
+          onSubmit={sendLink}
+          className="row"
+          style={{ alignItems: "stretch" }}
+        >
           <input
             className="input"
             type="email"
@@ -112,7 +125,14 @@ function ProgressRing({ value, goal }: { value: number; goal: number }) {
   const dash = C * Math.min(value / Math.max(goal, 1), 1);
   return (
     <svg className="ring" viewBox="0 0 160 160">
-      <circle cx="80" cy="80" r={r} stroke="#d8e0e8" strokeWidth={stroke} fill="none" />
+      <circle
+        cx="80"
+        cy="80"
+        r={r}
+        stroke="#d8e0e8"
+        strokeWidth={stroke}
+        fill="none"
+      />
       <circle
         cx="80"
         cy="80"
@@ -124,10 +144,24 @@ function ProgressRing({ value, goal }: { value: number; goal: number }) {
         strokeDasharray={`${dash} ${C - dash}`}
         transform="rotate(-90 80 80)"
       />
-      <text x="50%" y="46%" dominantBaseline="middle" textAnchor="middle" fontSize="24" fontWeight="800">
+      <text
+        x="50%"
+        y="46%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        fontSize="24"
+        fontWeight="800"
+      >
         {Math.round(value)} min
       </text>
-      <text x="50%" y="60%" dominantBaseline="middle" textAnchor="middle" fontSize="12" opacity="0.7">
+      <text
+        x="50%"
+        y="60%"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        fontSize="12"
+        opacity="0.7"
+      >
         Goal {goal}
       </text>
     </svg>
@@ -141,7 +175,9 @@ function Today({
 }: {
   goal: number;
   plan: PlanState;
-  onSaveToday: (rows: { date: string; category: CategoryKey; minutes: number }[]) => Promise<void>;
+  onSaveToday: (
+    rows: { date: string; category: CategoryKey; minutes: number }[]
+  ) => Promise<void>;
 }) {
   const [secs, setSecs] = useState<Record<CategoryKey, number>>({
     scales: 0,
@@ -156,7 +192,9 @@ function Today({
     technique: false,
   });
 
-  const totalMin = Math.round(Object.values(secs).reduce((a, b) => a + b, 0) / 60);
+  const totalMin = Math.round(
+    Object.values(secs).reduce((a, b) => a + b, 0) / 60
+  );
   const dailyTarget = useMemo(() => {
     const t = {} as Record<CategoryKey, number>;
     for (const c of CATS) t[c.key] = plan.items[c.key]?.minutes || 0;
@@ -204,15 +242,11 @@ function Today({
         <ProgressRing value={totalMin} goal={goal} />
       </div>
 
-      {/* Test banner for auto-deploy */}
-      <div className="card" style={{ marginTop: 8 }}>
-        <strong>Hello World</strong>
-      </div>
-
       {CATS.map((c) => {
         const mins = Math.round(secs[c.key] / 60),
           target = dailyTarget[c.key] || 0,
-          pct = target === 0 ? 0 : Math.min(100, Math.round((mins / target) * 100));
+          pct =
+            target === 0 ? 0 : Math.min(100, Math.round((mins / target) * 100));
         const isRun = running[c.key],
           sub = plan.items[c.key]?.note || "";
         return (
@@ -225,17 +259,24 @@ function Today({
                 </div>
                 {sub ? <div className="subhead">{sub}</div> : null}
                 <div className="note">
-                  <span className="timer">{fmtMMSS(secs[c.key])}</span> · <span>{mins}</span> min{" "}
+                  <span className="timer">{fmtMMSS(secs[c.key])}</span> ·{" "}
+                  <span>{mins}</span> min{" "}
                   <span className="small" style={{ opacity: 0.7 }}>
                     / target {Math.round(target)}m
                   </span>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button className="btn secondary" onClick={() => setRunning((r) => ({ ...r, [c.key]: true }))}>
+                <button
+                  className="btn secondary"
+                  onClick={() => setRunning((r) => ({ ...r, [c.key]: true }))}
+                >
                   Start
                 </button>
-                <button className="btn secondary" onClick={() => setRunning((r) => ({ ...r, [c.key]: false }))}>
+                <button
+                  className="btn secondary"
+                  onClick={() => setRunning((r) => ({ ...r, [c.key]: false }))}
+                >
                   Stop
                 </button>
                 <input
@@ -283,8 +324,17 @@ function PlanPage({
   );
   const remaining = goal - allocatedDaily;
 
-  function update(cat: CategoryKey, field: "minutes" | "note", value: number | string) {
-    setPlan({ items: { ...plan.items, [cat]: { ...plan.items[cat], [field]: value as any } } });
+  function update(
+    cat: CategoryKey,
+    field: "minutes" | "note",
+    value: number | string
+  ) {
+    setPlan({
+      items: {
+        ...plan.items,
+        [cat]: { ...plan.items[cat], [field]: value as any },
+      },
+    });
   }
   async function handleSave() {
     await onSavePlan({ goal, plan });
@@ -292,7 +342,14 @@ function PlanPage({
 
   return (
     <div className="card">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        className="row"
+        style={{
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <h3 className="caps">Weekly Plan</h3>
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
           <label className="small">Daily Goal</label>
@@ -303,11 +360,16 @@ function PlanPage({
             min={10}
             step={5}
             value={goal}
-            onChange={(e) => setGoal(Math.max(10, parseInt(e.target.value || "0", 10)))}
+            onChange={(e) =>
+              setGoal(Math.max(10, parseInt(e.target.value || "0", 10)))
+            }
           />
           <div className="pill small">
-            Allocated <strong style={{ margin: "0 4px" }}>{allocatedDaily}</strong> ·{" "}
-            {remaining >= 0 ? `Remaining ${remaining}m` : `Over by ${Math.abs(remaining)}m`}
+            Allocated{" "}
+            <strong style={{ margin: "0 4px" }}>{allocatedDaily}</strong> ·{" "}
+            {remaining >= 0
+              ? `Remaining ${remaining}m`
+              : `Over by ${Math.abs(remaining)}m`}
           </div>
         </div>
       </div>
@@ -324,7 +386,9 @@ function PlanPage({
                 min={0}
                 step={5}
                 value={plan.items[c.key].minutes}
-                onChange={(e) => update(c.key, "minutes", parseInt(e.target.value || "0", 10))}
+                onChange={(e) =>
+                  update(c.key, "minutes", parseInt(e.target.value || "0", 10))
+                }
                 placeholder="Daily target minutes"
               />
               <input
@@ -348,24 +412,43 @@ function PlanPage({
 }
 
 function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
-  const [range, setRange] = useState<"week" | "month" | "quarter" | "year">("week");
-  const daysCount = range === "week" ? 7 : range === "month" ? 30 : range === "quarter" ? 90 : 365;
+  const [range, setRange] = useState<"week" | "month" | "quarter" | "year">(
+    "week"
+  );
+  const daysCount =
+    range === "week"
+      ? 7
+      : range === "month"
+      ? 30
+      : range === "quarter"
+      ? 90
+      : 365;
   const days = useMemo(() => lastNDates(daysCount).reverse(), [range]);
 
   const perDay = useMemo(() => {
     return days.map((d) => {
       const rows = sessions.filter((s) => s.date === d);
       const total = rows.reduce((a, s) => a + s.minutes, 0);
-      const split: Record<CategoryKey, number> = { scales: 0, review: 0, new: 0, technique: 0 };
+      const split: Record<CategoryKey, number> = {
+        scales: 0,
+        review: 0,
+        new: 0,
+        technique: 0,
+      };
       rows.forEach((r) => (split[r.category] += r.minutes));
       return { date: d, total, split };
     });
   }, [sessions, days]);
 
   const sumTotal = perDay.reduce((a, d) => a + d.total, 0);
-  const metDays = perDay.filter((d) => d.total >= Math.round(goal * 0.8)).length;
+  const metDays = perDay.filter(
+    (d) => d.total >= Math.round(goal * 0.8)
+  ).length;
   const consistencyDisplay = `${metDays}/${daysCount}`;
-  const pct = Math.min(100, Math.round((sumTotal / Math.max(goal * daysCount, 1)) * 100));
+  const pct = Math.min(
+    100,
+    Math.round((sumTotal / Math.max(goal * daysCount, 1)) * 100)
+  );
 
   return (
     <div className="card">
@@ -373,14 +456,21 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
         <h3 className="caps">History</h3>
         <div className="tabs">
           {(["week", "month", "quarter", "year"] as const).map((r) => (
-            <button key={r} className={"tab small " + (range === r ? "active" : "")} onClick={() => setRange(r)}>
+            <button
+              key={r}
+              className={"tab small " + (range === r ? "active" : "")}
+              onClick={() => setRange(r)}
+            >
               {r[0].toUpperCase() + r.slice(1)}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        className="row"
+        style={{ justifyContent: "space-between", alignItems: "center" }}
+      >
         <div style={{ flex: 1, marginRight: 12 }}>
           <div className="bar">
             <span style={{ width: pct + "%" }}></span>
@@ -392,11 +482,15 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
         <div className="grid2" style={{ minWidth: 280 }}>
           <div>
             <div className="muted">Total minutes</div>
-            <div style={{ fontWeight: 800, fontSize: "1.8rem" }}>{sumTotal}</div>
+            <div style={{ fontWeight: 800, fontSize: "1.8rem" }}>
+              {sumTotal}
+            </div>
           </div>
           <div>
             <div className="muted">Consistency (days)</div>
-            <div style={{ fontWeight: 800, fontSize: "1.8rem" }}>{consistencyDisplay}</div>
+            <div style={{ fontWeight: 800, fontSize: "1.8rem" }}>
+              {consistencyDisplay}
+            </div>
           </div>
         </div>
       </div>
@@ -414,25 +508,40 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
       <div className="strip" title="Scroll horizontally">
         {perDay.map((d) => {
           const maxH = 120;
-          const h = Math.max(2, Math.round(maxH * Math.min(1, d.total / Math.max(goal, 1))));
+          const h = Math.max(
+            2,
+            Math.round(maxH * Math.min(1, d.total / Math.max(goal, 1)))
+          );
           const total = Math.max(1, d.total);
           const segs: { cls: string; h: number }[] = [];
-          (["scales", "review", "new", "technique"] as CategoryKey[]).forEach((k) => {
-            const frac = d.split[k] / total;
-            const segH = Math.round(h * frac);
-            if (segH > 0) segs.push({ cls: k, h: segH });
-          });
+          (["scales", "review", "new", "technique"] as CategoryKey[]).forEach(
+            (k) => {
+              const frac = d.split[k] / total;
+              const segH = Math.round(h * frac);
+              if (segH > 0) segs.push({ cls: k, h: segH });
+            }
+          );
           const ld = parseLocalDate(d.date);
-          const weekdayShort = ld.toLocaleDateString(undefined, { weekday: "short" });
+          const weekdayShort = ld.toLocaleDateString(undefined, {
+            weekday: "short",
+          });
           return (
             <div key={d.date} className="col" title={d.total + " min"}>
               <div className="vstack">
                 {segs.map((s, i) => (
-                  <div key={i} className={"seg " + s.cls} style={{ height: s.h + "px" }}></div>
+                  <div
+                    key={i}
+                    className={"seg " + s.cls}
+                    style={{ height: s.h + "px" }}
+                  ></div>
                 ))}
               </div>
-              <div className="small" style={{ opacity: 0.8 }}>{weekdayShort[0]}</div>
-              <div className="small" style={{ fontWeight: 700 }}>{ld.getDate()}</div>
+              <div className="small" style={{ opacity: 0.8 }}>
+                {weekdayShort[0]}
+              </div>
+              <div className="small" style={{ fontWeight: 700 }}>
+                {ld.getDate()}
+              </div>
             </div>
           );
         })}
@@ -449,7 +558,10 @@ function SessionLog({
 }: {
   sessions: SessionRow[];
   addEntry: (date: string) => Promise<void>;
-  updateEntry: (id: number, patch: Partial<Pick<SessionRow, "category" | "minutes">>) => Promise<void>;
+  updateEntry: (
+    id: number,
+    patch: Partial<Pick<SessionRow, "category" | "minutes">>
+  ) => Promise<void>;
   deleteEntry: (id: number) => Promise<void>;
 }) {
   const days = lastNDates(14);
@@ -470,22 +582,40 @@ function SessionLog({
         const ld = parseLocalDate(date);
         return (
           <div key={date} style={{ marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "6px 0" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                margin: "6px 0",
+              }}
+            >
               <div style={{ fontWeight: 800 }}>
-                {ld.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
+                {ld.toLocaleDateString(undefined, {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                })}
               </div>
               <button className="btn secondary" onClick={() => addEntry(date)}>
                 + Add entry
               </button>
             </div>
-            {rows.length === 0 ? <div className="small muted">No entries</div> : null}
+            {rows.length === 0 ? (
+              <div className="small muted">No entries</div>
+            ) : null}
             {rows.map((r) => (
               <div key={r.id} className="row" style={{ alignItems: "center" }}>
                 <select
                   className="select"
                   style={{ maxWidth: 180 }}
                   value={r.category}
-                  onChange={(e) => r.id && updateEntry(r.id, { category: e.target.value as CategoryKey })}
+                  onChange={(e) =>
+                    r.id &&
+                    updateEntry(r.id, {
+                      category: e.target.value as CategoryKey,
+                    })
+                  }
                 >
                   {CATS.map((c) => (
                     <option key={c.key} value={c.key}>
@@ -500,10 +630,18 @@ function SessionLog({
                   min={0}
                   step={1}
                   value={r.minutes}
-                  onChange={(e) => r.id && updateEntry(r.id, { minutes: Math.max(0, parseInt(e.target.value || "0", 10)) })}
+                  onChange={(e) =>
+                    r.id &&
+                    updateEntry(r.id, {
+                      minutes: Math.max(0, parseInt(e.target.value || "0", 10)),
+                    })
+                  }
                 />
                 {r.id ? (
-                  <button className="btn danger" onClick={() => deleteEntry(r.id!)}>
+                  <button
+                    className="btn danger"
+                    onClick={() => deleteEntry(r.id!)}
+                  >
                     Delete
                   </button>
                 ) : null}
@@ -520,7 +658,9 @@ function SessionLog({
 /* ---------- App ---------- */
 export default function App() {
   const [userId, setUserId] = useState<string | null>(null);
-  const [view, setView] = useState<"today" | "plan" | "history" | "log">("today");
+  const [view, setView] = useState<"today" | "plan" | "history" | "log">(
+    "today"
+  );
 
   // Live state
   const [goal, setGoal] = useState(180);
@@ -542,7 +682,11 @@ export default function App() {
       setLoading(true);
       try {
         // PLAN
-        const { data: planRow } = await supabase.from("plan").select("*").eq("user_id", userId).maybeSingle();
+        const { data: planRow } = await supabase
+          .from("plan")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
         if (!planRow) {
           await supabase.from("plan").insert({
             user_id: userId,
@@ -556,13 +700,19 @@ export default function App() {
             technique_minutes: 45,
             technique_note: "Shifts & vibrato",
           });
-          const { data: seeded } = await supabase.from("plan").select("*").eq("user_id", userId).maybeSingle();
+          const { data: seeded } = await supabase
+            .from("plan")
+            .select("*")
+            .eq("user_id", userId)
+            .maybeSingle();
           if (seeded) applyPlan(seeded);
         } else {
           applyPlan(planRow);
         }
         // SESSIONS
-        const start = localISO(new Date(new Date().setDate(new Date().getDate() - 365)));
+        const start = localISO(
+          new Date(new Date().setDate(new Date().getDate() - 365))
+        );
         const { data: sessRows } = await supabase
           .from("sessions")
           .select("id, session_date, category, minutes")
@@ -587,15 +737,30 @@ export default function App() {
     setGoal(row.daily_goal ?? 180);
     setPlan({
       items: {
-        scales: { minutes: row.scales_minutes ?? 45, note: row.scales_note ?? "" },
-        review: { minutes: row.review_minutes ?? 45, note: row.review_note ?? "" },
+        scales: {
+          minutes: row.scales_minutes ?? 45,
+          note: row.scales_note ?? "",
+        },
+        review: {
+          minutes: row.review_minutes ?? 45,
+          note: row.review_note ?? "",
+        },
         new: { minutes: row.new_minutes ?? 45, note: row.new_note ?? "" },
-        technique: { minutes: row.technique_minutes ?? 45, note: row.technique_note ?? "" },
+        technique: {
+          minutes: row.technique_minutes ?? 45,
+          note: row.technique_note ?? "",
+        },
       },
     });
   }
 
-  async function savePlan({ goal: nextGoal, plan: nextPlan }: { goal: number; plan: PlanState }) {
+  async function savePlan({
+    goal: nextGoal,
+    plan: nextPlan,
+  }: {
+    goal: number;
+    plan: PlanState;
+  }) {
     await supabase.from("plan").upsert({
       user_id: userId!,
       daily_goal: nextGoal,
@@ -611,8 +776,15 @@ export default function App() {
     });
   }
 
-  async function saveToday(rows: { date: string; category: CategoryKey; minutes: number }[]) {
-    const payload = rows.map((r) => ({ user_id: userId!, session_date: r.date, category: r.category, minutes: r.minutes }));
+  async function saveToday(
+    rows: { date: string; category: CategoryKey; minutes: number }[]
+  ) {
+    const payload = rows.map((r) => ({
+      user_id: userId!,
+      session_date: r.date,
+      category: r.category,
+      minutes: r.minutes,
+    }));
     const { data } = await supabase.from("sessions").insert(payload).select();
     const mapped =
       (data || []).map((r: any) => ({
@@ -627,17 +799,32 @@ export default function App() {
   async function addEntry(date: string) {
     const { data } = await supabase
       .from("sessions")
-      .insert({ user_id: userId!, session_date: date, category: "scales", minutes: 0 })
+      .insert({
+        user_id: userId!,
+        session_date: date,
+        category: "scales",
+        minutes: 0,
+      })
       .select()
       .single();
     setSessions((prev) => [
       ...prev,
-      { id: data.id, date: data.session_date as string, category: data.category as CategoryKey, minutes: data.minutes },
+      {
+        id: data.id,
+        date: data.session_date as string,
+        category: data.category as CategoryKey,
+        minutes: data.minutes,
+      },
     ]);
   }
-  async function updateEntry(id: number, patch: Partial<Pick<SessionRow, "category" | "minutes">>) {
+  async function updateEntry(
+    id: number,
+    patch: Partial<Pick<SessionRow, "category" | "minutes">>
+  ) {
     await supabase.from("sessions").update(patch).eq("id", id);
-    setSessions((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    setSessions((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...patch } : r))
+    );
   }
   async function deleteEntry(id: number) {
     await supabase.from("sessions").delete().eq("id", id);
@@ -668,7 +855,11 @@ export default function App() {
 
       <div className="tabs">
         {(["today", "plan", "history", "log"] as const).map((t) => (
-          <button key={t} className={"tab" + (view === t ? " active" : "")} onClick={() => setView(t)}>
+          <button
+            key={t}
+            className={"tab" + (view === t ? " active" : "")}
+            onClick={() => setView(t)}
+          >
             {t === "log" ? "Session Log" : t[0].toUpperCase() + t.slice(1)}
           </button>
         ))}
@@ -681,11 +872,22 @@ export default function App() {
       ) : view === "today" ? (
         <Today goal={goal} plan={plan} onSaveToday={saveToday} />
       ) : view === "plan" ? (
-        <PlanPage goal={goal} setGoal={setGoal} plan={plan} setPlan={setPlan} onSavePlan={savePlan} />
+        <PlanPage
+          goal={goal}
+          setGoal={setGoal}
+          plan={plan}
+          setPlan={setPlan}
+          onSavePlan={savePlan}
+        />
       ) : view === "history" ? (
         <History sessions={sessions} goal={goal} />
       ) : (
-        <SessionLog sessions={sessions} addEntry={addEntry} updateEntry={updateEntry} deleteEntry={deleteEntry} />
+        <SessionLog
+          sessions={sessions}
+          addEntry={addEntry}
+          updateEntry={updateEntry}
+          deleteEntry={deleteEntry}
+        />
       )}
     </div>
   );
