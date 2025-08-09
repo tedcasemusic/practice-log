@@ -203,6 +203,12 @@ function Today({
       <div className="card center">
         <ProgressRing value={totalMin} goal={goal} />
       </div>
+
+      {/* Test banner for auto-deploy */}
+      <div className="card" style={{ marginTop: 8 }}>
+        <strong>Hello World</strong>
+      </div>
+
       {CATS.map((c) => {
         const mins = Math.round(secs[c.key] / 60),
           target = dailyTarget[c.key] || 0,
@@ -416,7 +422,6 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
             const segH = Math.round(h * frac);
             if (segH > 0) segs.push({ cls: k, h: segH });
           });
-          // ✅ Use local parser so weekday/day don’t shift
           const ld = parseLocalDate(d.date);
           const weekdayShort = ld.toLocaleDateString(undefined, { weekday: "short" });
           return (
@@ -462,7 +467,7 @@ function SessionLog({
       <h3 className="caps">Session Log</h3>
       {days.map((date) => {
         const rows = grouped.get(date) || [];
-        const ld = parseLocalDate(date); // ✅ local parse
+        const ld = parseLocalDate(date);
         return (
           <div key={date} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "6px 0" }}>
@@ -638,17 +643,6 @@ export default function App() {
     await supabase.from("sessions").delete().eq("id", id);
     setSessions((prev) => prev.filter((r) => r.id !== id));
   }
-<>
-  <div className="card center">
-    <ProgressRing value={totalMin} goal={goal} />
-  </div>
-
-  {/* Test banner for auto-deploy */}
-  <div className="card" style={{ marginTop: 8 }}>
-    <strong>Hello World</strong>
-  </div>
-
-  {CATS.map(c=>{
 
   if (!userId) return <AuthGate onReady={setUserId} />;
 
