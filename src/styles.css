@@ -1,0 +1,92 @@
+/* Fonts: We'll attempt to load local Now/Montserrat; fallback to system. */
+@font-face {
+  font-family: 'Now';
+  src: local('Now');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: local('Montserrat');
+  font-display: swap;
+}
+
+:root {
+  --blue: #00b2ff;
+  --offwhite: #f2f5f7;
+  --ice: #d8e0e8;
+  --slate: #bccad8;
+  --coffee: #463c32;
+  --deep: #223a44;
+  --ink: #0e171b;
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: var(--offwhite);
+  color: var(--ink);
+}
+
+.dark body {
+  background: var(--ink);
+  color: var(--offwhite);
+}
+
+h1, h2, h3, .caps {
+  font-family: 'Now', 'Montserrat', system-ui, -apple-system, Arial;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.card {
+  background: white;
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  margin-bottom: 12px;
+  border: 1px solid var(--ice);
+}
+
+.dark .card {
+  background: #0f1a1f;
+  color: var(--offwhite);
+  border-color: #13242b;
+}
+
+.button {
+  background: var(--blue);
+  color: #001018;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.input, .select, .textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ice);
+  background: white;
+  color: var(--ink);
+}
+
+.dark .input, .dark .select, .dark .textarea {
+  background: #0f1a1f; color: var(--offwhite); border-color: #13242b;
+}
