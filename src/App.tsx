@@ -268,47 +268,48 @@ function Today({
                 >
                   {isRun ? "Stop Timer" : "Start Timer"}
                 </button>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                  }}
-                >
-                  <input
-                    className="input"
-                    type="text"
-                    value={fmtMMSS(secs[c.key])}
-                    onChange={(e) => {
-                      const input = e.target.value;
-                      const match = input.match(/^(\d{1,2}):(\d{2})$/);
-                      if (match) {
-                        const minutes = parseInt(match[1], 10);
-                        const seconds = parseInt(match[2], 10);
-                        if (seconds < 60) {
-                          handleManual(c.key, String(minutes * 60 + seconds));
-                        }
+                <input
+                  className="input"
+                  type="text"
+                  value={fmtMMSS(secs[c.key])}
+                  onChange={(e) => {
+                    const input = e.target.value;
+                    const match = input.match(/^(\d{1,2}):(\d{2})$/);
+                    if (match) {
+                      const minutes = parseInt(match[1], 10);
+                      const seconds = parseInt(match[2], 10);
+                      if (seconds < 60) {
+                        handleManual(c.key, String(minutes * 60 + seconds));
                       }
-                    }}
-                    style={{ width: 100 }}
-                    title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
-                    placeholder="MM:SS"
-                  />
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      opacity: 0.6,
-                      fontStyle: "italic",
-                      marginTop: "2px",
-                    }}
-                  >
-                    {Math.round(secs[c.key] / 60)} / {target}m
-                  </div>
-                </div>
+                    }
+                  }}
+                  style={{ width: 100 }}
+                  title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
+                  placeholder="MM:SS"
+                />
               </div>
             </div>
-            <div className="bar" style={{ marginTop: 10 }}>
-              <span style={{ width: pct + "%" }}></span>
+            <div
+              style={{
+                marginTop: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <div className="bar" style={{ flex: 1 }}>
+                <span style={{ width: pct + "%" }}></span>
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  opacity: 0.7,
+                  fontWeight: 500,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                GOAL: {target}m
+              </div>
             </div>
           </div>
         );
