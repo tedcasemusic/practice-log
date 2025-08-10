@@ -172,11 +172,18 @@ function Today({
   goal,
   plan,
   onSaveToday,
+  sessions,
+  updateEntry,
 }: {
   goal: number;
   plan: PlanState;
   onSaveToday: (
     rows: { date: string; category: CategoryKey; minutes: number }[]
+  ) => Promise<void>;
+  sessions: SessionRow[];
+  updateEntry: (
+    id: number,
+    patch: Partial<Pick<SessionRow, "category" | "minutes">>
   ) => Promise<void>;
 }) {
   const [secs, setSecs] = useState<Record<CategoryKey, number>>({
@@ -185,6 +192,19 @@ function Today({
     new: 0,
     technique: 0,
   });
+
+  // Initialize timer values from existing sessions for today (only once on mount)
+  useEffect(() => {
+    const todayISO = localISO(new Date());
+    const todaySessions = sessions.filter((s) => s.date === todayISO);
+
+    const initialSecs = { scales: 0, review: 0, new: 0, technique: 0 };
+    todaySessions.forEach((s) => {
+      initialSecs[s.category] = s.minutes * 60;
+    });
+
+    setSecs(initialSecs);
+  }, []); // Only run once on mount, not every time sessions change
   const [running, setRunning] = useState<Record<CategoryKey, boolean>>({
     scales: false,
     review: false,
@@ -213,24 +233,78 @@ function Today({
     return t;
   }, [plan]);
 
+  // Auto-save function that updates existing entries or creates new ones
+  async function autoSave(category: CategoryKey, minutes: number) {
+    if (minutes === 0) return; // Don't save 0 minutes
+
+    const todayISO = localISO(new Date());
+
+    // Check if we already have an entry for today in this category
+    const existingEntry = sessions.find(
+      (s) => s.date === todayISO && s.category === category
+    );
+
+    if (existingEntry && existingEntry.id) {
+      // Update existing entry
+      await updateEntry(existingEntry.id, { minutes });
+    } else {
+      // Create new entry only if we don't have one
+      const row = {
+        date: todayISO,
+        category: category,
+        minutes: minutes,
+      };
+      await onSaveToday([row]);
+    }
+  }
+
+  // Debounced auto-save to prevent multiple rapid saves
+  const debouncedAutoSave = useMemo(() => {
+    const timeouts: Record<CategoryKey, NodeJS.Timeout> = {} as Record<
+      CategoryKey,
+      NodeJS.Timeout
+    >;
+
+    return (category: CategoryKey, minutes: number) => {
+      if (timeouts[category]) {
+        clearTimeout(timeouts[category]);
+      }
+
+      timeouts[category] = setTimeout(() => {
+        autoSave(category, minutes);
+      }, 1000); // Wait 1 second before saving
+    };
+  }, []);
+
   useEffect(() => {
     const id = setInterval(
       () =>
         setSecs((s) => {
           const n = { ...s };
           (Object.keys(n) as CategoryKey[]).forEach((k) => {
-            if (running[k]) n[k]++;
+            if (running[k]) {
+              n[k]++;
+              // Auto-save every 60 seconds while timer is running (less frequent)
+              if (n[k] % 60 === 0) {
+                debouncedAutoSave(k, Math.round(n[k] / 60));
+              }
+            }
           });
           return n;
         }),
       1000
     );
     return () => clearInterval(id);
-  }, [running]);
+  }, [running, debouncedAutoSave]);
 
   function handleManual(k: CategoryKey, v: string) {
     const val = Math.max(0, parseInt(v || "0", 10));
     setSecs((s) => ({ ...s, [k]: val }));
+
+    // Auto-save when manually editing
+    if (val > 0) {
+      autoSave(k, Math.round(val / 60));
+    }
   }
   async function saveToday() {
     const todayISO = localISO(new Date()); // ✅ local date string
@@ -244,7 +318,7 @@ function Today({
       return;
     }
     await onSaveToday(rows);
-    setSecs({ scales: 0, review: 0, new: 0, technique: 0 });
+    // Don't reset timers - let them persist
     setRunning({ scales: false, review: false, new: false, technique: false });
   }
 
@@ -280,39 +354,99 @@ function Today({
                 >
                   {isRun ? "Stop Timer" : "Start Timer"}
                 </button>
-                <input
-                  className="input"
-                  type="text"
-                  value={
-                    editing[c.key] ? inputValues[c.key] : fmtMMSS(secs[c.key])
-                  }
-                  onChange={(e) => {
-                    const input = e.target.value;
-                    setInputValues((prev) => ({ ...prev, [c.key]: input }));
-                    const match = input.match(/^(\d{1,2}):(\d{2})$/);
-                    if (match) {
-                      const minutes = parseInt(match[1], 10);
-                      const seconds = parseInt(match[2], 10);
-                      if (seconds < 60) {
-                        handleManual(c.key, String(minutes * 60 + seconds));
-                      }
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="input"
+                    type="text"
+                    value={
+                      editing[c.key] ? inputValues[c.key] : fmtMMSS(secs[c.key])
                     }
-                  }}
-                  onFocus={() => {
-                    setEditing((prev) => ({ ...prev, [c.key]: true }));
-                    setInputValues((prev) => ({
-                      ...prev,
-                      [c.key]: fmtMMSS(secs[c.key]),
-                    }));
-                  }}
-                  onBlur={() => {
-                    setEditing((prev) => ({ ...prev, [c.key]: false }));
-                    setInputValues((prev) => ({ ...prev, [c.key]: "" }));
-                  }}
-                  style={{ width: 100 }}
-                  title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
-                  placeholder="MM:SS"
-                />
+                    onChange={(e) => {
+                      const input = e.target.value;
+                      setInputValues((prev) => ({ ...prev, [c.key]: input }));
+                      const match = input.match(/^(\d{1,2}):(\d{2})$/);
+                      if (match) {
+                        const minutes = parseInt(match[1], 10);
+                        const seconds = parseInt(match[2], 10);
+                        if (seconds < 60) {
+                          handleManual(c.key, String(minutes * 60 + seconds));
+                        }
+                      }
+                    }}
+                    onFocus={() => {
+                      setEditing((prev) => ({ ...prev, [c.key]: true }));
+                      setInputValues((prev) => ({
+                        ...prev,
+                        [c.key]: fmtMMSS(secs[c.key]),
+                      }));
+                    }}
+                    onBlur={() => {
+                      setEditing((prev) => ({ ...prev, [c.key]: false }));
+                      setInputValues((prev) => ({ ...prev, [c.key]: "" }));
+                    }}
+                    style={{ width: 100, paddingRight: 30 }}
+                    title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
+                    placeholder="MM:SS"
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 2,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                    }}
+                  >
+                    <button
+                      className="btn secondary"
+                      style={{
+                        padding: "1px 4px",
+                        fontSize: "0.7rem",
+                        minHeight: "auto",
+                        lineHeight: 1,
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        const newSecs = secs[c.key] + 5 * 60;
+                        handleManual(c.key, String(newSecs));
+                        // Auto-save after arrow adjustment
+                        if (newSecs > 0) {
+                          autoSave(c.key, Math.round(newSecs / 60));
+                        }
+                      }}
+                      title="Add 5 minutes"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      className="btn secondary"
+                      style={{
+                        padding: "1px 4px",
+                        fontSize: "0.7rem",
+                        minHeight: "auto",
+                        lineHeight: 1,
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        const newSecs = Math.max(0, secs[c.key] - 5 * 60);
+                        handleManual(c.key, String(newSecs));
+                        // Auto-save after arrow adjustment
+                        if (newSecs > 0) {
+                          autoSave(c.key, Math.round(newSecs / 60));
+                        }
+                      }}
+                      title="Subtract 5 minutes"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div
@@ -323,7 +457,7 @@ function Today({
                 gap: 8,
               }}
             >
-              <div className="bar" style={{ flex: 1 }}>
+              <div className={`bar ${c.key}`} style={{ flex: 1 }}>
                 <span style={{ width: pct + "%" }}></span>
               </div>
               <div
@@ -340,11 +474,6 @@ function Today({
           </div>
         );
       })}
-      <div className="card footer-actions">
-        <button className="btn" onClick={saveToday}>
-          Save Today
-        </button>
-      </div>
     </>
   );
 }
@@ -914,7 +1043,13 @@ export default function App() {
           <div className="small">Loading…</div>
         </div>
       ) : view === "today" ? (
-        <Today goal={goal} plan={plan} onSaveToday={saveToday} />
+        <Today
+          goal={goal}
+          plan={plan}
+          onSaveToday={saveToday}
+          sessions={sessions}
+          updateEntry={updateEntry}
+        />
       ) : view === "plan" ? (
         <PlanPage
           goal={goal}
