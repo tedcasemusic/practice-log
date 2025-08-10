@@ -259,7 +259,6 @@ function Today({
                 </div>
                 {sub ? <div className="subhead">{sub}</div> : null}
                 <div className="note">
-                  <span className="timer">{fmtMMSS(secs[c.key])}</span> ·{" "}
                   <span>{mins}</span> min{" "}
                   <span className="small" style={{ opacity: 0.7 }}>
                     / target {Math.round(target)}m
@@ -283,6 +282,7 @@ function Today({
                   step={1}
                   onChange={(e) => handleManual(c.key, e.target.value)}
                   style={{ width: 100 }}
+                  title="Edit minutes manually or let timer update automatically"
                 />
               </div>
             </div>
