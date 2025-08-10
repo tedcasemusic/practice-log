@@ -218,7 +218,7 @@ function Today({
 
   function handleManual(k: CategoryKey, v: string) {
     const val = Math.max(0, parseInt(v || "0", 10));
-    setSecs((s) => ({ ...s, [k]: val * 60 }));
+    setSecs((s) => ({ ...s, [k]: val }));
   }
   async function saveToday() {
     const todayISO = localISO(new Date()); // ✅ local date string
@@ -276,13 +276,22 @@ function Today({
                 </button>
                 <input
                   className="input"
-                  type="number"
-                  value={mins}
-                  min={0}
-                  step={1}
-                  onChange={(e) => handleManual(c.key, e.target.value)}
+                  type="text"
+                  value={fmtMMSS(secs[c.key])}
+                  onChange={(e) => {
+                    const input = e.target.value;
+                    const match = input.match(/^(\d{1,2}):(\d{2})$/);
+                    if (match) {
+                      const minutes = parseInt(match[1], 10);
+                      const seconds = parseInt(match[2], 10);
+                      if (seconds < 60) {
+                        handleManual(c.key, String(minutes * 60 + seconds));
+                      }
+                    }
+                  }}
                   style={{ width: 100 }}
-                  title="Edit minutes manually or let timer update automatically"
+                  title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
+                  placeholder="MM:SS"
                 />
               </div>
             </div>
