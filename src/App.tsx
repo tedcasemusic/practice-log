@@ -273,7 +273,7 @@ function Today({
                     setRunning((r) => ({ ...r, [c.key]: !r[c.key] }))
                   }
                 >
-                  {isRun ? "Stop" : "Start"}
+                  {isRun ? "Stop Timer" : "Start Timer"}
                 </button>
                 <input
                   className="input"
