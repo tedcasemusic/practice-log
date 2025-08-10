@@ -191,6 +191,18 @@ function Today({
     new: false,
     technique: false,
   });
+  const [editing, setEditing] = useState<Record<CategoryKey, boolean>>({
+    scales: false,
+    review: false,
+    new: false,
+    technique: false,
+  });
+  const [inputValues, setInputValues] = useState<Record<CategoryKey, string>>({
+    scales: "",
+    review: "",
+    new: "",
+    technique: "",
+  });
 
   const totalMin = Math.round(
     Object.values(secs).reduce((a, b) => a + b, 0) / 60
@@ -271,9 +283,12 @@ function Today({
                 <input
                   className="input"
                   type="text"
-                  value={fmtMMSS(secs[c.key])}
+                  value={
+                    editing[c.key] ? inputValues[c.key] : fmtMMSS(secs[c.key])
+                  }
                   onChange={(e) => {
                     const input = e.target.value;
+                    setInputValues((prev) => ({ ...prev, [c.key]: input }));
                     const match = input.match(/^(\d{1,2}):(\d{2})$/);
                     if (match) {
                       const minutes = parseInt(match[1], 10);
@@ -282,6 +297,17 @@ function Today({
                         handleManual(c.key, String(minutes * 60 + seconds));
                       }
                     }
+                  }}
+                  onFocus={() => {
+                    setEditing((prev) => ({ ...prev, [c.key]: true }));
+                    setInputValues((prev) => ({
+                      ...prev,
+                      [c.key]: fmtMMSS(secs[c.key]),
+                    }));
+                  }}
+                  onBlur={() => {
+                    setEditing((prev) => ({ ...prev, [c.key]: false }));
+                    setInputValues((prev) => ({ ...prev, [c.key]: "" }));
                   }}
                   style={{ width: 100 }}
                   title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
