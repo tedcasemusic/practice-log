@@ -269,15 +269,11 @@ function Today({
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   className="btn secondary"
-                  onClick={() => setRunning((r) => ({ ...r, [c.key]: true }))}
+                  onClick={() =>
+                    setRunning((r) => ({ ...r, [c.key]: !r[c.key] }))
+                  }
                 >
-                  Start
-                </button>
-                <button
-                  className="btn secondary"
-                  onClick={() => setRunning((r) => ({ ...r, [c.key]: false }))}
-                >
-                  Stop
+                  {isRun ? "Stop" : "Start"}
                 </button>
                 <input
                   className="input"
