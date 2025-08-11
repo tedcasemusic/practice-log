@@ -465,9 +465,20 @@ function Today({
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   className="btn secondary"
-                  onClick={() =>
-                    setRunning((r) => ({ ...r, [c.key]: !r[c.key] }))
-                  }
+                  onClick={() => {
+                    if (isRun) {
+                      // Stop this timer
+                      setRunning((r) => ({ ...r, [c.key]: false }));
+                    } else {
+                      // Start this timer and stop all others
+                      setRunning((r) => {
+                        const newState = Object.fromEntries(
+                          CATS.map((cat) => [cat.key, cat.key === c.key])
+                        ) as Record<CategoryKey, boolean>;
+                        return newState;
+                      });
+                    }
+                  }}
                 >
                   {isRun ? "Stop Timer" : "Start Timer"}
                 </button>
