@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import "./ui/theme.css";
 import { supabase } from "./lib/supabase";
 
@@ -174,6 +174,7 @@ function Today({
   onSaveToday,
   sessions,
   updateEntry,
+  ensureDailyEntries,
 }: {
   goal: number;
   plan: PlanState;
@@ -185,6 +186,7 @@ function Today({
     id: number,
     patch: Partial<Pick<SessionRow, "category" | "minutes">>
   ) => Promise<void>;
+  ensureDailyEntries: (date: string) => Promise<void>;
 }) {
   const [secs, setSecs] = useState<Record<CategoryKey, number>>({
     scales: 0,
@@ -193,9 +195,24 @@ function Today({
     technique: 0,
   });
 
-  // Initialize timer values from existing sessions for today (only once on mount)
+  // Initialize timer values and ensure daily entries exist
+  // Use a ref to prevent multiple calls to ensureDailyEntries
+  const hasInitializedToday = React.useRef(false);
+
   useEffect(() => {
     const todayISO = localISO(new Date());
+
+    // Ensure we have entries for all categories today (only once)
+    if (!hasInitializedToday.current) {
+      console.log(
+        `🔄 Today component: Initializing daily entries for ${todayISO}`
+      );
+      hasInitializedToday.current = true;
+      ensureDailyEntries(todayISO);
+    } else {
+      console.log(`🚫 Today component: Already initialized for ${todayISO}`);
+    }
+
     const todaySessions = sessions.filter((s) => s.date === todayISO);
 
     const initialSecs = { scales: 0, review: 0, new: 0, technique: 0 };
@@ -204,7 +221,7 @@ function Today({
     });
 
     setSecs(initialSecs);
-  }, []); // Only run once on mount, not every time sessions change
+  }, [ensureDailyEntries, sessions]); // Include dependencies properly
   const [running, setRunning] = useState<Record<CategoryKey, boolean>>({
     scales: false,
     review: false,
@@ -233,7 +250,7 @@ function Today({
     return t;
   }, [plan]);
 
-  // Auto-save function that updates existing entries or creates new ones
+  // Auto-save function that updates existing entries (they should always exist now)
   async function autoSave(category: CategoryKey, minutes: number) {
     if (minutes === 0) return; // Don't save 0 minutes
 
@@ -248,13 +265,13 @@ function Today({
       // Update existing entry
       await updateEntry(existingEntry.id, { minutes });
     } else {
-      // Create new entry only if we don't have one
-      const row = {
-        date: todayISO,
-        category: category,
-        minutes: minutes,
-      };
-      await onSaveToday([row]);
+      // This shouldn't happen anymore since we ensure entries exist
+      console.warn(
+        "No entry found for category:",
+        category,
+        "on date:",
+        todayISO
+      );
     }
   }
 
@@ -724,19 +741,36 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
 
 function SessionLog({
   sessions,
-  addEntry,
+  clearDay,
   updateEntry,
-  deleteEntry,
+  clearEntry,
+  ensureAllDaysHaveEntries,
 }: {
   sessions: SessionRow[];
-  addEntry: (date: string) => Promise<void>;
+  clearDay: (date: string) => Promise<void>;
   updateEntry: (
     id: number,
     patch: Partial<Pick<SessionRow, "category" | "minutes">>
   ) => Promise<void>;
-  deleteEntry: (id: number) => Promise<void>;
+  clearEntry: (id: number) => Promise<void>;
+  ensureAllDaysHaveEntries: () => Promise<void>;
 }) {
   const days = lastNDates(14);
+
+  // Ensure all days have entries for all categories when component mounts
+  // Use a ref to prevent multiple calls
+  const hasInitialized = React.useRef(false);
+
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      console.log(`🔄 SessionLog component: Initializing all days entries`);
+      hasInitialized.current = true;
+      ensureAllDaysHaveEntries();
+    } else {
+      console.log(`🚫 SessionLog component: Already initialized`);
+    }
+  }, [ensureAllDaysHaveEntries]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, SessionRow[]>();
     sessions.forEach((s) => {
@@ -769,8 +803,8 @@ function SessionLog({
                   day: "numeric",
                 })}
               </div>
-              <button className="btn secondary" onClick={() => addEntry(date)}>
-                + Add entry
+              <button className="btn secondary" onClick={() => clearDay(date)}>
+                Clear Day
               </button>
             </div>
             {rows.length === 0 ? (
@@ -811,10 +845,10 @@ function SessionLog({
                 />
                 {r.id ? (
                   <button
-                    className="btn danger"
-                    onClick={() => deleteEntry(r.id!)}
+                    className="btn secondary"
+                    onClick={() => clearEntry(r.id!)}
                   >
-                    Delete
+                    Clear
                   </button>
                 ) : null}
               </div>
@@ -968,27 +1002,189 @@ export default function App() {
     setSessions((prev) => [...prev, ...mapped]);
   }
 
-  async function addEntry(date: string) {
-    const { data } = await supabase
-      .from("sessions")
-      .insert({
-        user_id: userId!,
-        session_date: date,
-        category: "scales",
-        minutes: 0,
-      })
-      .select()
-      .single();
-    setSessions((prev) => [
-      ...prev,
-      {
-        id: data.id,
-        date: data.session_date as string,
-        category: data.category as CategoryKey,
-        minutes: data.minutes,
-      },
-    ]);
+  // Function to ensure daily entries exist for all categories
+  // This function is now more robust and prevents duplicate creation
+  const ensureDailyEntries = React.useCallback(
+    async (date: string) => {
+      // Prevent concurrent calls
+      if (isCreatingEntries.current) {
+        console.log(
+          `🚫 ensureDailyEntries: Skipping ${date} - already creating entries`
+        );
+        return;
+      }
+
+      const categories: CategoryKey[] = [
+        "scales",
+        "review",
+        "new",
+        "technique",
+      ];
+
+      // Check what we already have in local state first
+      const existingInState = categories.filter((category) =>
+        sessions.some((s) => s.date === date && s.category === category)
+      );
+
+      // Only create entries for categories that don't exist in state
+      const missingCategories = categories.filter(
+        (category) => !existingInState.includes(category)
+      );
+
+      // Early return if no categories are missing
+      if (missingCategories.length === 0) {
+        console.log(
+          `✅ ensureDailyEntries: ${date} - all categories already exist in state`
+        );
+        return; // All entries already exist
+      }
+
+      // Set flag to prevent concurrent calls
+      isCreatingEntries.current = true;
+
+      try {
+        // Double-check with database to prevent duplicates
+        const { data: existingInDB } = await supabase
+          .from("sessions")
+          .select("category")
+          .eq("user_id", userId!)
+          .eq("session_date", date);
+
+        const existingCategoriesInDB = (existingInDB || []).map(
+          (r: any) => r.category
+        );
+        const trulyMissingCategories = missingCategories.filter(
+          (category) => !existingCategoriesInDB.includes(category)
+        );
+
+        // Early return if no categories are truly missing
+        if (trulyMissingCategories.length === 0) {
+          console.log(
+            `✅ ensureDailyEntries: ${date} - all categories already exist in database`
+          );
+          return; // All entries already exist in database
+        }
+
+        // Create missing entries in a single batch
+        const entriesToCreate = trulyMissingCategories.map((category) => ({
+          user_id: userId!,
+          session_date: date,
+          category: category,
+          minutes: 0,
+        }));
+
+        console.log(
+          `🔄 ensureDailyEntries: Creating ${trulyMissingCategories.length} entries for ${date}:`,
+          trulyMissingCategories
+        );
+
+        const { data, error } = await supabase
+          .from("sessions")
+          .insert(entriesToCreate)
+          .select();
+
+        if (error) {
+          console.error("Error creating daily entries:", error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const newEntries = data.map((r: any) => ({
+            id: r.id,
+            date: r.session_date as string,
+            category: r.category as CategoryKey,
+            minutes: r.minutes,
+          }));
+
+          console.log(
+            `✅ ensureDailyEntries: Successfully created ${newEntries.length} entries for ${date}`
+          );
+          setSessions((prev) => [...prev, ...newEntries]);
+        }
+      } finally {
+        // Always reset the flag
+        isCreatingEntries.current = false;
+      }
+    },
+    [userId] // Remove sessions from dependency array to prevent infinite loops
+  );
+
+  // Function to ensure all days in the Session Log have entries for all categories
+  const ensureAllDaysHaveEntries = useCallback(async () => {
+    // Prevent concurrent calls
+    if (isCreatingEntries.current) {
+      return;
+    }
+
+    const days = lastNDates(14);
+
+    // Check which days already have all categories
+    const daysNeedingEntries = days.filter((date) => {
+      const dayEntries = sessions.filter((s) => s.date === date);
+      return dayEntries.length < 4; // Less than 4 categories
+    });
+
+    // Early return if no days need entries
+    if (daysNeedingEntries.length === 0) {
+      return;
+    }
+
+    // Only process days that need entries
+    for (const date of daysNeedingEntries) {
+      await ensureDailyEntries(date);
+    }
+  }, [ensureDailyEntries]); // Remove sessions dependency to prevent infinite loops
+
+  // Add a cleanup function to prevent multiple calls
+  const hasRunRef = React.useRef(false);
+  const ensureAllDaysHaveEntriesOnce = useCallback(async () => {
+    // Use a ref to prevent multiple calls
+    if (hasRunRef.current) {
+      console.log(`🚫 ensureAllDaysHaveEntriesOnce: Skipping - already run`);
+      return;
+    }
+    console.log(`🔄 ensureAllDaysHaveEntriesOnce: Running`);
+    hasRunRef.current = true;
+    await ensureAllDaysHaveEntries();
+  }, [ensureAllDaysHaveEntries]);
+
+  // Add a cleanup function for daily entries to prevent multiple calls
+  const hasRunDailyRef = React.useRef(false);
+  const ensureDailyEntriesOnce = useCallback(
+    async (date: string) => {
+      // Use a ref to prevent multiple calls for the same date
+      if (hasRunDailyRef.current) {
+        console.log(
+          `🚫 ensureDailyEntriesOnce: Skipping ${date} - already run`
+        );
+        return;
+      }
+      console.log(`🔄 ensureDailyEntriesOnce: Running for ${date}`);
+      hasRunDailyRef.current = true;
+      await ensureDailyEntries(date);
+    },
+    [ensureDailyEntries]
+  );
+
+  // Add a flag to prevent concurrent calls to ensureDailyEntries
+  const isCreatingEntries = React.useRef(false);
+
+  // Function to clear all entries for a specific day
+  async function clearDay(date: string) {
+    const dayEntries = sessions.filter((s) => s.date === date);
+
+    for (const entry of dayEntries) {
+      if (entry.id) {
+        await updateEntry(entry.id, { minutes: 0 });
+      }
+    }
   }
+
+  // Function to clear a specific entry (set minutes to 0)
+  async function clearEntry(id: number) {
+    await updateEntry(id, { minutes: 0 });
+  }
+
   async function updateEntry(
     id: number,
     patch: Partial<Pick<SessionRow, "category" | "minutes">>
@@ -997,10 +1193,6 @@ export default function App() {
     setSessions((prev) =>
       prev.map((r) => (r.id === id ? { ...r, ...patch } : r))
     );
-  }
-  async function deleteEntry(id: number) {
-    await supabase.from("sessions").delete().eq("id", id);
-    setSessions((prev) => prev.filter((r) => r.id !== id));
   }
 
   if (!userId) return <AuthGate onReady={setUserId} />;
@@ -1048,6 +1240,7 @@ export default function App() {
           onSaveToday={saveToday}
           sessions={sessions}
           updateEntry={updateEntry}
+          ensureDailyEntries={ensureDailyEntriesOnce}
         />
       ) : view === "plan" ? (
         <PlanPage
@@ -1062,9 +1255,10 @@ export default function App() {
       ) : (
         <SessionLog
           sessions={sessions}
-          addEntry={addEntry}
+          clearDay={clearDay}
           updateEntry={updateEntry}
-          deleteEntry={deleteEntry}
+          clearEntry={clearEntry}
+          ensureAllDaysHaveEntries={ensureAllDaysHaveEntriesOnce}
         />
       )}
     </div>
