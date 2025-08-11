@@ -117,14 +117,71 @@ function AuthGate({ onReady }: { onReady: (userId: string) => void }) {
 }
 
 /* ---------- UI bits ---------- */
-function ProgressRing({ value, goal }: { value: number; goal: number }) {
+function ProgressRing({
+  value,
+  goal,
+  categoryMinutes,
+}: {
+  value: number;
+  goal: number;
+  categoryMinutes: Record<CategoryKey, number>;
+}) {
   const size = 160,
     stroke = 14,
     r = (size - stroke) / 2,
     C = 2 * Math.PI * r;
-  const dash = C * Math.min(value / Math.max(goal, 1), 1);
+
+  // Calculate the total minutes for all categories
+  const totalMinutes = Object.values(categoryMinutes).reduce(
+    (sum, mins) => sum + mins,
+    0
+  );
+
+  // Only show arcs if we have practice data
+  const hasPracticeData = totalMinutes > 0;
+
+  // Category colors
+  const categoryColors: Record<CategoryKey, string> = {
+    scales: "#00b2ff",
+    review: "#8ad0ff",
+    new: "#63a6c2",
+    technique: "#3d6a7a",
+  };
+
+  // Calculate arc lengths for each category
+  const categoryArcs = CATS.map((cat) => {
+    const minutes = categoryMinutes[cat.key];
+    if (minutes <= 0) return null;
+
+    const arcLength = (minutes / Math.max(goal, 1)) * C;
+    return {
+      category: cat.key,
+      minutes,
+      arcLength,
+      color: categoryColors[cat.key],
+    };
+  }).filter(Boolean);
+
+  // Calculate starting angles for each arc
+  let currentAngle = -90; // Start from top
+  const positionedArcs = categoryArcs
+    .map((arc) => {
+      if (!arc) return null;
+      const startAngle = currentAngle;
+      const endAngle = startAngle + (arc.arcLength / C) * 360;
+      currentAngle = endAngle;
+
+      return {
+        ...arc,
+        startAngle,
+        endAngle,
+      };
+    })
+    .filter(Boolean);
+
   return (
     <svg className="ring" viewBox="0 0 160 160">
+      {/* Background circle */}
       <circle
         cx="80"
         cy="80"
@@ -133,17 +190,45 @@ function ProgressRing({ value, goal }: { value: number; goal: number }) {
         strokeWidth={stroke}
         fill="none"
       />
-      <circle
-        cx="80"
-        cy="80"
-        r={r}
-        stroke="#00b2ff"
-        strokeWidth={stroke}
-        fill="none"
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${C - dash}`}
-        transform="rotate(-90 80 80)"
-      />
+
+      {/* Category-specific arcs */}
+      {hasPracticeData &&
+        positionedArcs.map((arc, index) => {
+          if (!arc) return null;
+
+          // Convert angles to radians and calculate SVG arc parameters
+          const startRad = (arc.startAngle * Math.PI) / 180;
+          const endRad = (arc.endAngle * Math.PI) / 180;
+
+          // Calculate start and end points
+          const x1 = 80 + r * Math.cos(startRad);
+          const y1 = 80 + r * Math.sin(startRad);
+          const x2 = 80 + r * Math.cos(endRad);
+          const y2 = 80 + r * Math.sin(endRad);
+
+          // Determine if we need to draw a large arc (more than 180 degrees)
+          const largeArcFlag =
+            Math.abs(arc.endAngle - arc.startAngle) > 180 ? 1 : 0;
+
+          // Create the path for the arc
+          const pathData = [
+            `M ${x1} ${y1}`,
+            `A ${r} ${r} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+          ].join(" ");
+
+          return (
+            <path
+              key={`${arc.category}-${index}`}
+              d={pathData}
+              stroke={arc.color}
+              strokeWidth={stroke}
+              fill="none"
+              strokeLinecap="butt"
+            />
+          );
+        })}
+
+      {/* Text overlay */}
       <text
         x="50%"
         y="46%"
@@ -349,7 +434,16 @@ function Today({
   return (
     <>
       <div className="card center">
-        <ProgressRing value={totalMin} goal={goal} />
+        <ProgressRing
+          value={totalMin}
+          goal={goal}
+          categoryMinutes={{
+            scales: Math.round(secs.scales / 60),
+            review: Math.round(secs.review / 60),
+            new: Math.round(secs.new / 60),
+            technique: Math.round(secs.technique / 60),
+          }}
+        />
       </div>
 
       {CATS.map((c) => {
