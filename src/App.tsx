@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import "./ui/theme.css";
 import { supabase } from "./lib/supabase";
 
@@ -315,18 +321,33 @@ function Today({
       boolean
     >
   );
-  const [editing, setEditing] = useState<Record<CategoryKey, boolean>>(
+
+  // State for managing slide-out animation
+  const [isSlidingOut, setIsSlidingOut] = useState(false);
+
+  // State for tracking paused timers (separate from running)
+  const [paused, setPaused] = useState<Record<CategoryKey, boolean>>(
     Object.fromEntries(CATS.map((c) => [c.key, false])) as Record<
       CategoryKey,
       boolean
     >
   );
-  const [inputValues, setInputValues] = useState<Record<CategoryKey, string>>(
-    Object.fromEntries(CATS.map((c) => [c.key, ""])) as Record<
-      CategoryKey,
-      string
-    >
-  );
+
+  // State for editing timer values
+  const [editingTimer, setEditingTimer] = useState<CategoryKey | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+
+  // Ref to measure text width for dynamic input sizing
+  const textMeasureRef = useRef<HTMLSpanElement>(null);
+
+  // Function to calculate optimal input width
+  const getInputWidth = useCallback(() => {
+    if (textMeasureRef.current) {
+      const textWidth = textMeasureRef.current.offsetWidth;
+      return `${textWidth + 16}px`; // Add 16px for padding and border
+    }
+    return "80px"; // Fallback width
+  }, []);
 
   const totalMin = Math.round(
     Object.values(secs).reduce((a, b) => a + b, 0) / 60
@@ -401,15 +422,6 @@ function Today({
     return () => clearInterval(id);
   }, [running, debouncedAutoSave]);
 
-  function handleManual(k: CategoryKey, v: string) {
-    const val = Math.max(0, parseInt(v || "0", 10));
-    setSecs((s) => ({ ...s, [k]: val }));
-
-    // Auto-save when manually editing
-    if (val > 0) {
-      autoSave(k, Math.round(val / 60));
-    }
-  }
   async function saveToday() {
     const todayISO = localISO(new Date()); // ✅ local date string
     const rows = CATS.map((c) => ({
@@ -434,174 +446,375 @@ function Today({
   return (
     <>
       <div className="card center">
-        <ProgressRing
-          value={totalMin}
-          goal={goal}
-          categoryMinutes={{
-            scales: Math.round(secs.scales / 60),
-            review: Math.round(secs.review / 60),
-            new: Math.round(secs.new / 60),
-            technique: Math.round(secs.technique / 60),
-          }}
-        />
-      </div>
+        <div className="swipe-container">
+          {/* Progress Ring - slides left when timer starts */}
+          <div
+            className={`swipe-content ${
+              (Object.values(running).some((r) => r) ||
+                Object.values(paused).some((p) => p)) &&
+              !isSlidingOut
+                ? "slide-left"
+                : ""
+            }`}
+          >
+            <ProgressRing
+              value={totalMin}
+              goal={goal}
+              categoryMinutes={{
+                scales: Math.round(secs.scales / 60),
+                review: Math.round(secs.review / 60),
+                new: Math.round(secs.new / 60),
+                technique: Math.round(secs.technique / 60),
+              }}
+            />
+          </div>
 
-      {CATS.map((c) => {
-        const mins = Math.round(secs[c.key] / 60),
-          target = dailyTarget[c.key] || 0,
-          pct =
-            target === 0 ? 0 : Math.min(100, Math.round((mins / target) * 100));
-        const isRun = running[c.key],
-          sub = plan.items[c.key]?.note || "";
-        return (
-          <div key={c.key} className={"card " + (isRun ? "running" : "")}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <div className="caps" style={{ fontWeight: 800 }}>
-                  {c.label}
-                </div>
-                {sub ? <div className="subhead">{sub}</div> : null}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  className="btn secondary"
-                  onClick={() => {
-                    if (isRun) {
-                      // Stop this timer
-                      setRunning((r) => ({ ...r, [c.key]: false }));
-                    } else {
-                      // Start this timer and stop all others
-                      setRunning((r) => {
-                        const newState = Object.fromEntries(
-                          CATS.map((cat) => [cat.key, cat.key === c.key])
-                        ) as Record<CategoryKey, boolean>;
-                        return newState;
-                      });
-                    }
-                  }}
-                >
-                  {isRun ? "Stop Timer" : "Start Timer"}
-                </button>
-                <div style={{ position: "relative" }}>
-                  <input
-                    className="input"
-                    type="text"
-                    value={
-                      editing[c.key] ? inputValues[c.key] : fmtMMSS(secs[c.key])
-                    }
-                    onChange={(e) => {
-                      const input = e.target.value;
-                      setInputValues((prev) => ({ ...prev, [c.key]: input }));
-                      const match = input.match(/^(\d{1,2}):(\d{2})$/);
-                      if (match) {
-                        const minutes = parseInt(match[1], 10);
-                        const seconds = parseInt(match[2], 10);
-                        if (seconds < 60) {
-                          handleManual(c.key, String(minutes * 60 + seconds));
-                        }
-                      }
-                    }}
-                    onFocus={() => {
-                      setEditing((prev) => ({ ...prev, [c.key]: true }));
-                      setInputValues((prev) => ({
-                        ...prev,
-                        [c.key]: fmtMMSS(secs[c.key]),
-                      }));
-                    }}
-                    onBlur={() => {
-                      setEditing((prev) => ({ ...prev, [c.key]: false }));
-                      setInputValues((prev) => ({ ...prev, [c.key]: "" }));
-                    }}
-                    style={{ width: 100, paddingRight: 30 }}
-                    title="Format: MM:SS (e.g., 05:30 for 5 minutes 30 seconds)"
-                    placeholder="MM:SS"
-                  />
+          {/* Practice Session Card - slides in from right when timer starts */}
+          <div
+            className={`swipe-content practice-session ${
+              Object.values(running).some((r) => r) ||
+              Object.values(paused).some((p) => p)
+                ? isSlidingOut
+                  ? "slide-out-right"
+                  : "slide-in"
+                : ""
+            }`}
+          >
+            {(() => {
+              const activeCategory = CATS.find(
+                (cat) => running[cat.key] || paused[cat.key]
+              );
+              if (activeCategory) {
+                const activeSecs = secs[activeCategory.key];
+                const activeMins = Math.round(activeSecs / 60);
+                const activeSecsRemaining = activeSecs % 60;
+                const isCurrentlyRunning = running[activeCategory.key];
+
+                return (
                   <div
                     style={{
-                      position: "absolute",
-                      right: 2,
-                      top: "50%",
-                      transform: "translateY(-50%)",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 1,
+                      width: "100%",
+                      height: "100%",
+                      padding: "0 20px",
+                      position: "relative",
                     }}
                   >
-                    <button
-                      className="btn secondary"
+                    {/* Main content area with left and right sides */}
+                    <div
                       style={{
-                        padding: "1px 4px",
-                        fontSize: "0.7rem",
-                        minHeight: "auto",
-                        lineHeight: 1,
-                        border: "none",
-                        background: "transparent",
-                        cursor: "pointer",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        flex: 1,
+                        marginTop: "20px",
                       }}
-                      onClick={() => {
-                        const newSecs = secs[c.key] + 5 * 60;
-                        handleManual(c.key, String(newSecs));
-                        // Auto-save after arrow adjustment
-                        if (newSecs > 0) {
-                          autoSave(c.key, Math.round(newSecs / 60));
-                        }
-                      }}
-                      title="Add 5 minutes"
                     >
-                      ▲
-                    </button>
-                    <button
-                      className="btn secondary"
-                      style={{
-                        padding: "1px 4px",
-                        fontSize: "0.7rem",
-                        minHeight: "auto",
-                        lineHeight: 1,
-                        border: "none",
-                        background: "transparent",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => {
-                        const newSecs = Math.max(0, secs[c.key] - 5 * 60);
-                        handleManual(c.key, String(newSecs));
-                        // Auto-save after arrow adjustment
-                        if (newSecs > 0) {
-                          autoSave(c.key, Math.round(newSecs / 60));
-                        }
-                      }}
-                      title="Subtract 5 minutes"
-                    >
-                      ▼
-                    </button>
+                      {/* Left side - Category title, timer and pause button */}
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          paddingLeft: "0", // Remove padding to align with Progress Ring
+                        }}
+                      >
+                        {/* Category title above timer */}
+                        <div
+                          className="caps"
+                          style={{
+                            fontSize: "1.4rem",
+                            fontWeight: 800,
+                            color: "var(--blue)",
+                            lineHeight: "1.2",
+                            marginBottom: "15px",
+                          }}
+                        >
+                          {activeCategory.label}
+                        </div>
+
+                        {/* Timer display */}
+                        <div
+                          className="practice-session-main"
+                          style={{ lineHeight: "1", marginBottom: "20px" }}
+                        >
+                          {/* Hidden span to measure text width */}
+                          <span
+                            ref={textMeasureRef}
+                            style={{
+                              position: "absolute",
+                              visibility: "hidden",
+                              whiteSpace: "nowrap",
+                              fontSize: "inherit",
+                              fontFamily: "inherit",
+                              fontWeight: "inherit",
+                            }}
+                          >
+                            {String(activeMins).padStart(2, "0")}:
+                            {String(activeSecsRemaining).padStart(2, "0")}
+                          </span>
+
+                          {editingTimer === activeCategory.key ? (
+                            <input
+                              type="text"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => {
+                                // Parse the input and update the timer
+                                const [mins, secs] = editingValue
+                                  .split(":")
+                                  .map((s) => parseInt(s) || 0);
+                                const totalSecs = mins * 60 + secs;
+                                if (totalSecs >= 0) {
+                                  setSecs((prev) => ({
+                                    ...prev,
+                                    [activeCategory.key]: totalSecs,
+                                  }));
+                                  // Auto-save the new value
+                                  autoSave(
+                                    activeCategory.key,
+                                    Math.round(totalSecs / 60)
+                                  );
+                                }
+                                setEditingTimer(null);
+                                setEditingValue("");
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.currentTarget.blur();
+                                } else if (e.key === "Escape") {
+                                  setEditingTimer(null);
+                                  setEditingValue("");
+                                }
+                              }}
+                              style={{
+                                fontSize: "inherit",
+                                fontFamily: "inherit",
+                                fontWeight: "inherit",
+                                color: "inherit",
+                                background: "rgba(255, 255, 255, 0.05)",
+                                border: "1px solid rgba(0, 178, 255, 0.2)",
+                                borderRadius: "2px",
+                                outline: "none",
+                                width: getInputWidth(),
+                                textAlign: "center",
+                                padding: "2px 4px",
+                                margin: "0",
+                                boxSizing: "border-box",
+                                lineHeight: "inherit",
+                              }}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTimer(activeCategory.key);
+                                setEditingValue(
+                                  `${String(activeMins).padStart(
+                                    2,
+                                    "0"
+                                  )}:${String(activeSecsRemaining).padStart(
+                                    2,
+                                    "0"
+                                  )}`
+                                );
+                              }}
+                              style={{
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background =
+                                  "rgba(0, 178, 255, 0.05)";
+                                e.currentTarget.style.borderRadius = "2px";
+                                e.currentTarget.style.padding = "0px 1px";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background =
+                                  "transparent";
+                                e.currentTarget.style.borderRadius = "0";
+                                e.currentTarget.style.padding = "0";
+                              }}
+                              title="Click to edit timer"
+                            >
+                              {String(activeMins).padStart(2, "0")}:
+                              {String(activeSecsRemaining).padStart(2, "0")}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Pause/Play Button */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (running[activeCategory.key]) {
+                                // Pause the timer
+                                setRunning((r) => ({
+                                  ...r,
+                                  [activeCategory.key]: false,
+                                }));
+                                setPaused((p) => ({
+                                  ...p,
+                                  [activeCategory.key]: true,
+                                }));
+                              } else if (paused[activeCategory.key]) {
+                                // Resume the timer
+                                setPaused((p) => ({
+                                  ...p,
+                                  [activeCategory.key]: false,
+                                }));
+                                setRunning((r) => ({
+                                  ...r,
+                                  [activeCategory.key]: true,
+                                }));
+                              }
+                            }}
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              borderRadius: "50%",
+                              border: "2px solid var(--blue)",
+                              background: "white",
+                              color: "var(--blue)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "1.2rem",
+                              transition: "all 0.2s ease",
+                              boxShadow: "0 2px 8px rgba(0, 178, 255, 0.2)",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "var(--blue)";
+                              e.currentTarget.style.color = "white";
+                              e.currentTarget.style.transform = "scale(1.05)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "white";
+                              e.currentTarget.style.color = "var(--blue)";
+                              e.currentTarget.style.transform = "scale(1)";
+                            }}
+                            title={
+                              isCurrentlyRunning
+                                ? "Pause Timer"
+                                : "Resume Timer"
+                            }
+                          >
+                            {isCurrentlyRunning ? (
+                              "⏸"
+                            ) : (
+                              <span style={{ marginLeft: "2px" }}>▶</span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Right side - Notes */}
+                      <div
+                        style={{
+                          flex: 1,
+                          maxWidth: "50%",
+                          paddingLeft: "20px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "1.3rem",
+                            fontWeight: 600,
+                            color: "var(--deep)",
+                            lineHeight: "1.7",
+                            textAlign: "left",
+                          }}
+                        >
+                          {plan.items[activeCategory.key]?.note ||
+                            "No notes for this category"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        </div>
+      </div>
+
+      <div className="category-grid">
+        {CATS.map((c) => {
+          const mins = Math.round(secs[c.key] / 60),
+            target = dailyTarget[c.key] || 0,
+            pct =
+              target === 0
+                ? 0
+                : Math.min(100, Math.round((mins / target) * 100));
+          const isRun = running[c.key];
+          return (
             <div
-              style={{
-                marginTop: 10,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
+              key={c.key}
+              className={
+                "card " + (running[c.key] || paused[c.key] ? "running" : "")
+              }
+              onClick={() => {
+                if (running[c.key] || paused[c.key]) {
+                  // Stop this timer completely (whether running or paused)
+                  setIsSlidingOut(true);
+                  setTimeout(() => {
+                    setRunning((r) => ({ ...r, [c.key]: false }));
+                    setPaused((p) => ({ ...p, [c.key]: false }));
+                    setIsSlidingOut(false);
+                  }, 300);
+                } else {
+                  // Start this timer and stop all others
+                  setRunning((r) => {
+                    const newState = Object.fromEntries(
+                      CATS.map((cat) => [cat.key, cat.key === c.key])
+                    ) as Record<CategoryKey, boolean>;
+                    return newState;
+                  });
+                  // Clear any paused state when starting a new timer
+                  setPaused(
+                    (p) =>
+                      Object.fromEntries(
+                        CATS.map((cat) => [cat.key, false])
+                      ) as Record<CategoryKey, boolean>
+                  );
+                }
               }}
+              style={{ cursor: "pointer" }}
             >
-              <div className={`bar ${c.key}`} style={{ flex: 1 }}>
-                <span style={{ width: pct + "%" }}></span>
+              <div style={{ marginBottom: "12px" }}>
+                <div
+                  className="caps"
+                  style={{ fontWeight: 800, fontSize: "1.1rem" }}
+                >
+                  {c.label}
+                </div>
               </div>
               <div
                 style={{
-                  fontSize: "0.75rem",
-                  opacity: 0.7,
-                  fontWeight: 500,
-                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                GOAL: {target}m
+                <div className={`bar ${c.key}`} style={{ flex: 1 }}>
+                  <span style={{ width: pct + "%" }}></span>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </>
   );
 }

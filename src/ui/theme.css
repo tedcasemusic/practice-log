@@ -74,7 +74,7 @@ h3,
   border: 1px solid var(--ice);
   border-radius: 12px;
   padding: 16px;
-  margin: 12px 0;
+  margin: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
   transition: box-shadow 0.15s, border-color 0.15s;
@@ -297,6 +297,132 @@ h3,
   max-width: 520px;
 }
 
+/* ===== Category Grid for Today page ===== */
+.category-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.category-grid .card {
+  margin: 0;
+  height: fit-content;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.category-grid .card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 178, 255, 0.02) 0%,
+    rgba(0, 178, 255, 0.05) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.category-grid .card:hover::before {
+  opacity: 1;
+}
+
+.category-grid .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--blue);
+}
+
+.category-grid .card:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+.category-grid .card.running {
+  cursor: default;
+}
+
+.category-grid .card.running::before {
+  opacity: 0;
+}
+
+.category-grid .card.running:hover {
+  transform: none;
+  border-color: rgba(0, 178, 255, 0.7);
+}
+
+/* Time input area styling */
+.category-grid .card .input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--ice);
+  transition: all 0.2s ease;
+}
+
+.category-grid .card .input:focus {
+  background: white;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.1);
+}
+
+.category-grid .card.running .input {
+  background: rgba(173, 216, 230, 0.4);
+  border-color: rgba(0, 178, 255, 0.6);
+}
+
+/* ===== Swipe Animation System ===== */
+.swipe-container {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+}
+
+.swipe-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.swipe-content.slide-left {
+  transform: translateX(-100%);
+}
+
+.swipe-content.practice-session {
+  transform: translateX(100%);
+}
+
+.swipe-content.practice-session.slide-in {
+  transform: translateX(0);
+}
+
+.swipe-content.practice-session.slide-out-right {
+  transform: translateX(100%);
+}
+
+.practice-session-main {
+  font-family: "Now", "Montserrat", system-ui, Arial;
+  font-size: 3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--blue);
+  text-shadow: 0 2px 8px rgba(0, 178, 255, 0.3);
+}
+
 @media (max-width: 700px) {
   .grid2.tight {
     grid-template-columns: 1fr;
@@ -307,5 +433,21 @@ h3,
   }
   .plan-input-row input[type="text"] {
     max-width: 100%;
+  }
+  .category-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+}
+
+@media (max-width: 500px) {
+  .category-grid {
+    gap: 12px;
+    margin: 12px 0;
+  }
+
+  .category-grid .card {
+    padding: 14px;
   }
 }
