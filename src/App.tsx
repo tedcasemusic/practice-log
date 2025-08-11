@@ -215,31 +215,33 @@ function Today({
 
     const todaySessions = sessions.filter((s) => s.date === todayISO);
 
-    const initialSecs = { scales: 0, review: 0, new: 0, technique: 0 };
+    const initialSecs = Object.fromEntries(
+      CATS.map((c) => [c.key, 0])
+    ) as Record<CategoryKey, number>;
     todaySessions.forEach((s) => {
       initialSecs[s.category] = s.minutes * 60;
     });
 
     setSecs(initialSecs);
   }, [ensureDailyEntries, sessions]); // Include dependencies properly
-  const [running, setRunning] = useState<Record<CategoryKey, boolean>>({
-    scales: false,
-    review: false,
-    new: false,
-    technique: false,
-  });
-  const [editing, setEditing] = useState<Record<CategoryKey, boolean>>({
-    scales: false,
-    review: false,
-    new: false,
-    technique: false,
-  });
-  const [inputValues, setInputValues] = useState<Record<CategoryKey, string>>({
-    scales: "",
-    review: "",
-    new: "",
-    technique: "",
-  });
+  const [running, setRunning] = useState<Record<CategoryKey, boolean>>(
+    Object.fromEntries(CATS.map((c) => [c.key, false])) as Record<
+      CategoryKey,
+      boolean
+    >
+  );
+  const [editing, setEditing] = useState<Record<CategoryKey, boolean>>(
+    Object.fromEntries(CATS.map((c) => [c.key, false])) as Record<
+      CategoryKey,
+      boolean
+    >
+  );
+  const [inputValues, setInputValues] = useState<Record<CategoryKey, string>>(
+    Object.fromEntries(CATS.map((c) => [c.key, ""])) as Record<
+      CategoryKey,
+      string
+    >
+  );
 
   const totalMin = Math.round(
     Object.values(secs).reduce((a, b) => a + b, 0) / 60
@@ -336,7 +338,12 @@ function Today({
     }
     await onSaveToday(rows);
     // Don't reset timers - let them persist
-    setRunning({ scales: false, review: false, new: false, technique: false });
+    setRunning(
+      Object.fromEntries(CATS.map((c) => [c.key, false])) as Record<
+        CategoryKey,
+        boolean
+      >
+    );
   }
 
   return (
@@ -618,12 +625,9 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
     return days.map((d) => {
       const rows = sessions.filter((s) => s.date === d);
       const total = rows.reduce((a, s) => a + s.minutes, 0);
-      const split: Record<CategoryKey, number> = {
-        scales: 0,
-        review: 0,
-        new: 0,
-        technique: 0,
-      };
+      const split: Record<CategoryKey, number> = Object.fromEntries(
+        CATS.map((c) => [c.key, 0])
+      ) as Record<CategoryKey, number>;
       rows.forEach((r) => (split[r.category] += r.minutes));
       return { date: d, total, split };
     });
@@ -703,13 +707,12 @@ function History({ sessions, goal }: { sessions: SessionRow[]; goal: number }) {
           );
           const total = Math.max(1, d.total);
           const segs: { cls: string; h: number }[] = [];
-          (["scales", "review", "new", "technique"] as CategoryKey[]).forEach(
-            (k) => {
-              const frac = d.split[k] / total;
-              const segH = Math.round(h * frac);
-              if (segH > 0) segs.push({ cls: k, h: segH });
-            }
-          );
+          CATS.forEach((c) => {
+            const k = c.key;
+            const frac = d.split[k] / total;
+            const segH = Math.round(h * frac);
+            if (segH > 0) segs.push({ cls: k, h: segH });
+          });
           const ld = parseLocalDate(d.date);
           const weekdayShort = ld.toLocaleDateString(undefined, {
             weekday: "short",
@@ -810,49 +813,62 @@ function SessionLog({
             {rows.length === 0 ? (
               <div className="small muted">No entries</div>
             ) : null}
-            {rows.map((r) => (
-              <div key={r.id} className="row" style={{ alignItems: "center" }}>
-                <select
-                  className="select"
-                  style={{ maxWidth: 180 }}
-                  value={r.category}
-                  onChange={(e) =>
-                    r.id &&
-                    updateEntry(r.id, {
-                      category: e.target.value as CategoryKey,
-                    })
-                  }
+            {rows
+              .sort((a, b) => {
+                const aIndex = CATS.findIndex((cat) => cat.key === a.category);
+                const bIndex = CATS.findIndex((cat) => cat.key === b.category);
+                return aIndex - bIndex;
+              })
+              .map((r) => (
+                <div
+                  key={r.id}
+                  className="row"
+                  style={{ alignItems: "center" }}
                 >
-                  {CATS.map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input"
-                  style={{ maxWidth: 120 }}
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={r.minutes}
-                  onChange={(e) =>
-                    r.id &&
-                    updateEntry(r.id, {
-                      minutes: Math.max(0, parseInt(e.target.value || "0", 10)),
-                    })
-                  }
-                />
-                {r.id ? (
-                  <button
-                    className="btn secondary"
-                    onClick={() => clearEntry(r.id!)}
+                  <select
+                    className="select"
+                    style={{ maxWidth: 180 }}
+                    value={r.category}
+                    onChange={(e) =>
+                      r.id &&
+                      updateEntry(r.id, {
+                        category: e.target.value as CategoryKey,
+                      })
+                    }
                   >
-                    Clear
-                  </button>
-                ) : null}
-              </div>
-            ))}
+                    {CATS.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="input"
+                    style={{ maxWidth: 120 }}
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={r.minutes}
+                    onChange={(e) =>
+                      r.id &&
+                      updateEntry(r.id, {
+                        minutes: Math.max(
+                          0,
+                          parseInt(e.target.value || "0", 10)
+                        ),
+                      })
+                    }
+                  />
+                  {r.id ? (
+                    <button
+                      className="btn secondary"
+                      onClick={() => clearEntry(r.id!)}
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+              ))}
             <div className="hr"></div>
           </div>
         );
@@ -1014,12 +1030,7 @@ export default function App() {
         return;
       }
 
-      const categories: CategoryKey[] = [
-        "scales",
-        "review",
-        "new",
-        "technique",
-      ];
+      const categories: CategoryKey[] = CATS.map((c) => c.key);
 
       // Check what we already have in local state first
       const existingInState = categories.filter((category) =>
