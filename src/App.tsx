@@ -497,7 +497,7 @@ function Today({
                       flexDirection: "column",
                       width: "100%",
                       height: "100%",
-                      padding: "0 20px",
+                      padding: "0 20px 20px 20px",
                       position: "relative",
                     }}
                   >
@@ -714,6 +714,60 @@ function Today({
                             ) : (
                               <span style={{ marginLeft: "2px" }}>▶</span>
                             )}
+                          </button>
+                        </div>
+
+                        {/* Back to Progress Ring Button */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            marginTop: "8px",
+                            marginBottom: "20px",
+                          }}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Stop this timer completely and return to Progress Ring
+                              setIsSlidingOut(true);
+                              setTimeout(() => {
+                                setRunning((r) => ({
+                                  ...r,
+                                  [activeCategory.key]: false,
+                                }));
+                                setPaused((p) => ({
+                                  ...p,
+                                  [activeCategory.key]: false,
+                                }));
+                                setIsSlidingOut(false);
+                              }, 300);
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--blue)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "1.8rem",
+                              fontWeight: "900",
+                              transition: "all 0.2s ease",
+                              padding: "8px",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color =
+                                "rgba(0, 178, 255, 0.8)";
+                              e.currentTarget.style.transform = "scale(1.1)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = "var(--blue)";
+                              e.currentTarget.style.transform = "scale(1)";
+                            }}
+                            title="Stop Timer & Return to Progress Ring"
+                          >
+                            ⟵
                           </button>
                         </div>
                       </div>
