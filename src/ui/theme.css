@@ -181,22 +181,38 @@ h3,
   height: 220px;
 }
 
-/* Running state (more obvious subtle blue outline + glow) */
+/* Running state (enhanced blue outline + glow) */
 .running {
-  border-color: rgba(0, 178, 255, 0.6);
-  box-shadow: 0 0 0 2px rgba(0, 178, 255, 0.35) inset,
-    0 3px 14px rgba(0, 178, 255, 0.25);
+  border-color: rgba(0, 178, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.4) inset,
+    0 4px 20px rgba(0, 178, 255, 0.3), 0 0 40px rgba(0, 178, 255, 0.15);
+  animation: running-pulse 3s ease-in-out infinite;
 }
-.badge {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  background: var(--blue);
-  color: #001018;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.75rem;
+
+@keyframes running-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.4) inset,
+      0 4px 20px rgba(0, 178, 255, 0.3), 0 0 40px rgba(0, 178, 255, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(0, 178, 255, 0.5) inset,
+      0 4px 25px rgba(0, 178, 255, 0.4), 0 0 50px rgba(0, 178, 255, 0.2);
+  }
+}
+
+/* Timer input styling when running */
+.running .input[type="text"] {
+  background: rgba(173, 216, 230, 0.4);
+  border-color: rgba(0, 178, 255, 0.6);
+  box-shadow: 0 0 8px rgba(0, 178, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.running .input[type="text"]:focus {
+  background: rgba(173, 216, 230, 0.5);
+  border-color: rgba(0, 178, 255, 0.8);
+  box-shadow: 0 0 12px rgba(0, 178, 255, 0.3);
 }
 
 /* History strip */

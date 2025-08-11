@@ -337,7 +337,6 @@ function Today({
           sub = plan.items[c.key]?.note || "";
         return (
           <div key={c.key} className={"card " + (isRun ? "running" : "")}>
-            {isRun && <div className="badge">RUNNING</div>}
             <div className="row" style={{ justifyContent: "space-between" }}>
               <div>
                 <div className="caps" style={{ fontWeight: 800 }}>
