@@ -308,7 +308,9 @@ h3,
 .category-grid .card {
   margin: 0;
   height: fit-content;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   user-select: none;
   position: relative;
@@ -328,7 +330,7 @@ h3,
     rgba(0, 178, 255, 0.05) 100%
   );
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -376,6 +378,28 @@ h3,
 .category-grid .card.running .input {
   background: rgba(173, 216, 230, 0.4);
   border-color: rgba(0, 178, 255, 0.6);
+}
+
+/* Smooth text transition for category labels */
+.category-grid .card .caps {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.category-grid .card.running .caps {
+  color: var(--blue);
+  font-weight: 900;
+}
+
+/* Smooth transition back to normal state */
+.category-grid .card.sliding-out {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.category-grid .card.sliding-out::before {
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ===== Swipe Animation System ===== */

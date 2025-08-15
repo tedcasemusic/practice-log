@@ -519,6 +519,7 @@ function Today({
                           flexDirection: "column",
                           alignItems: "flex-start",
                           paddingLeft: "0", // Remove padding to align with Progress Ring
+                          marginTop: "20px", // Move the entire left side content down
                         }}
                       >
                         {/* Category title above timer */}
@@ -710,64 +711,38 @@ function Today({
                             }
                           >
                             {isCurrentlyRunning ? (
-                              "⏸"
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <rect
+                                  x="6"
+                                  y="4"
+                                  width="2"
+                                  height="12"
+                                  rx="1"
+                                />
+                                <rect
+                                  x="12"
+                                  y="4"
+                                  width="2"
+                                  height="12"
+                                  rx="1"
+                                />
+                              </svg>
                             ) : (
-                              <span style={{ marginLeft: "2px" }}>▶</span>
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                style={{ marginLeft: "2px" }}
+                              >
+                                <polygon points="7,4 7,16 16,10" />
+                              </svg>
                             )}
-                          </button>
-                        </div>
-
-                        {/* Back to Progress Ring Button */}
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            marginTop: "8px",
-                            marginBottom: "20px",
-                          }}
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Stop this timer completely and return to Progress Ring
-                              setIsSlidingOut(true);
-                              setTimeout(() => {
-                                setRunning((r) => ({
-                                  ...r,
-                                  [activeCategory.key]: false,
-                                }));
-                                setPaused((p) => ({
-                                  ...p,
-                                  [activeCategory.key]: false,
-                                }));
-                                setIsSlidingOut(false);
-                              }, 300);
-                            }}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "var(--blue)",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "1.8rem",
-                              fontWeight: "900",
-                              transition: "all 0.2s ease",
-                              padding: "8px",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.color =
-                                "rgba(0, 178, 255, 0.8)";
-                              e.currentTarget.style.transform = "scale(1.1)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.color = "var(--blue)";
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                            title="Stop Timer & Return to Progress Ring"
-                          >
-                            ⟵
                           </button>
                         </div>
                       </div>
@@ -816,7 +791,11 @@ function Today({
             <div
               key={c.key}
               className={
-                "card " + (running[c.key] || paused[c.key] ? "running" : "")
+                "card " +
+                (running[c.key] || paused[c.key] ? "running" : "") +
+                (isSlidingOut && (running[c.key] || paused[c.key])
+                  ? " sliding-out"
+                  : "")
               }
               onClick={() => {
                 if (running[c.key] || paused[c.key]) {
@@ -826,7 +805,7 @@ function Today({
                     setRunning((r) => ({ ...r, [c.key]: false }));
                     setPaused((p) => ({ ...p, [c.key]: false }));
                     setIsSlidingOut(false);
-                  }, 300);
+                  }, 600);
                 } else {
                   // Start this timer and stop all others
                   setRunning((r) => {
@@ -849,9 +828,23 @@ function Today({
               <div style={{ marginBottom: "12px" }}>
                 <div
                   className="caps"
-                  style={{ fontWeight: 800, fontSize: "1.1rem" }}
+                  style={{
+                    fontWeight: 800,
+                    fontSize: "1.1rem",
+                    transition: "all 0.3s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
                 >
-                  {c.label}
+                  {running[c.key] || paused[c.key] ? (
+                    <>
+                      <span style={{ fontSize: "1.2rem" }}>⟵</span>
+                      <span>BACK</span>
+                    </>
+                  ) : (
+                    c.label
+                  )}
                 </div>
               </div>
               <div
